@@ -23,6 +23,9 @@ type one struct {
 }
 
 func (o *one) move(i int) {
+	if o == nil {
+		return
+	}
 	l := len(o.targets)
 	tmp := o.cursor + i
 	if tmp < 0 {
@@ -52,8 +55,6 @@ func main() {
 		panic(err)
 	}
 
-	o := &one{input: inputstring}
-
 	strs := []string{
 		"[0] github.com/gizak/termui",
 		"[3] [color output](fg-white,bg-green)",
@@ -61,46 +62,59 @@ func main() {
 		"[5] random_out.go",
 		"[6] dashboard.go",
 		"[7] nsf/termbox-go"}
-	o.targets = strs
-	o.cursor = 2
+	o := &one{
+		input:   inputstring,
+		targets: strs,
+		cursor:  2,
+		ls:      ui.NewList(),
+	}
 
-	ls := ui.NewList()
-	ls.Items = strs
-	ls.ItemFgColor = ui.ColorYellow
-	ls.BorderLabel = "List"
-	ls.Height = 7
-	ls.Width = 25
-	ls.Y = 0
+	o.ls.Items = strs
+	o.ls.ItemFgColor = ui.ColorYellow
+	o.ls.BorderLabel = "List"
+	o.ls.Height = 7
+	o.ls.Width = 25
+	o.ls.Y = 0
 
-	ui.Render(ls)
+	ui.Render(o.ls)
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		ui.Close()
 	})
 
 	// ui.Render(p)
-	ui.Handle("/sys/kbd", func(e ui.Event) {
-		ek, ok := e.Data.(ui.EvtKbd)
-		if !ok {
-			return
-		}
-		ls.Items = []string{ek.KeyStr}
-		ui.Render(ls)
-		if ek.KeyStr == "<down>" {
-			o.move(-1)
-		}
-		if ek.KeyStr == "<up>" {
-			o.move(+1)
-		}
-		if ek.KeyStr == "enter" {
-			o.success = true
-			o.exit()
-		}
-	})
-	ui.Handle("/sys/kbd/q", func(e ui.Event) {
+	// ui.Handle("/sys/kbd", func(e ui.Event) {
+	// 	ek, ok := e.Data.(ui.EvtKbd)
+	// 	if !ok {
+	// 		return
+	// 	}
+	// 	ls.Items = []string{ek.KeyStr}
+	// 	ui.Render(ls)
+	// 	if ek.KeyStr == "<down>" {
+	// 		o.move(-1)
+	// 	}
+	// 	if ek.KeyStr == "<up>" {
+	// 		o.move(+1)
+	// 	}
+	// 	if ek.KeyStr == "enter" {
+	// 		o.success = true
+	// 		o.exit()
+	// 	}
+	// })
+	down := func(e ui.Event) {
+		o.move(1)
+	}
+	up := func(e ui.Event) {
+		o.move(-1)
+	}
+	quit := func(e ui.Event) {
 		o.success = true
 		o.exit()
-	})
-
-	// event handler...
+	}
+	ui.Handle("/sys/kbd/j", down)
+	ui.Handle("/sys/kbd/<down>", down)
+	ui.Handle("/sys/kbd/<up>", up)
+	ui.Handle("/sys/kbd/k", up)
+	ui.Handle("/sys/kbd/q", quit)
+	ui.Handle("/sys/kbd/<enter>", quit)
 	ui.Loop()
 }
