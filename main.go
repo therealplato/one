@@ -9,17 +9,67 @@ import (
 	ui "github.com/gizak/termui"
 )
 
-var inputstring = `foo@localhost
-bar@as.internal.df.com
-somehost
-`
+func main() {
+	err := ui.Init()
+	if err != nil {
+		panic(err)
+	}
+
+	strs := []string{
+		"[0] github.com/gizak/termui",
+		"[3] color output",
+		"[4] output.go",
+		"[5] random_out.go",
+		"[6] dashboard.go",
+		"[7] nsf/termbox-go",
+	}
+
+	o := &one{
+		targets: strs,
+		cursor:  2,
+		ls:      ui.NewList(),
+	}
+
+	o.ls.Items = strs
+	o.ls.ItemFgColor = ui.ColorWhite
+	o.ls.BorderLabel = "Select A Target"
+	o.ls.Height = 15
+	o.ls.Y = 0
+
+	ui.Body.AddRows(
+		ui.NewRow(
+			ui.NewCol(12, 0, o.ls),
+		),
+	)
+
+	o.Render()
+
+	down := func(e ui.Event) {
+		o.move(1)
+	}
+	up := func(e ui.Event) {
+		o.move(-1)
+	}
+	quit := func(e ui.Event) {
+		o.success = true
+		o.exit()
+	}
+
+	ui.Handle("/sys/kbd/j", down)
+	ui.Handle("/sys/kbd/<down>", down)
+	ui.Handle("/sys/kbd/<up>", up)
+	ui.Handle("/sys/kbd/k", up)
+	ui.Handle("/sys/kbd/q", quit)
+	ui.Handle("/sys/kbd/<enter>", quit)
+	ui.Loop()
+}
 
 type one struct {
-	ls      *ui.List
-	input   string
-	targets []string
-	cursor  int
-	success bool
+	ls       *ui.List
+	targets  []string
+	rendered []string
+	cursor   int
+	success  bool
 }
 
 func (o *one) move(i int) {
@@ -34,8 +84,10 @@ func (o *one) move(i int) {
 	if tmp > l {
 		tmp -= l
 	}
-	ui.Render(o.ls)
+	o.cursor = tmp
+	o.Render()
 }
+
 func (o *one) exit() {
 	ui.StopLoop()
 	ui.Close()
@@ -48,73 +100,16 @@ func (o *one) exit() {
 	os.Exit(1)
 }
 
-func main() {
-	// ui.NewMarkdownTxBuilder()
-	err := ui.Init()
-	if err != nil {
-		panic(err)
+func (o *one) Render() {
+	o.rendered = make([]string, 0, len(o.targets))
+	for i, s := range o.targets {
+		if i == o.cursor {
+			o.rendered = append(o.rendered, fmt.Sprintf("[%s](fg-red)", s))
+			continue
+		}
+		o.rendered = append(o.rendered, s)
 	}
-
-	strs := []string{
-		"[0] github.com/gizak/termui",
-		"[3] [color output](fg-white,bg-green)",
-		"[4] output.go",
-		"[5] random_out.go",
-		"[6] dashboard.go",
-		"[7] nsf/termbox-go"}
-	o := &one{
-		input:   inputstring,
-		targets: strs,
-		cursor:  2,
-		ls:      ui.NewList(),
-	}
-
-	o.ls.Items = strs
-	o.ls.ItemFgColor = ui.ColorYellow
-	o.ls.BorderLabel = "List"
-	o.ls.Height = 7
-	o.ls.Width = 25
-	o.ls.Y = 0
-
-	ui.Render(o.ls)
-	ui.Handle("/sys/kbd/q", func(ui.Event) {
-		ui.Close()
-	})
-
-	// ui.Render(p)
-	// ui.Handle("/sys/kbd", func(e ui.Event) {
-	// 	ek, ok := e.Data.(ui.EvtKbd)
-	// 	if !ok {
-	// 		return
-	// 	}
-	// 	ls.Items = []string{ek.KeyStr}
-	// 	ui.Render(ls)
-	// 	if ek.KeyStr == "<down>" {
-	// 		o.move(-1)
-	// 	}
-	// 	if ek.KeyStr == "<up>" {
-	// 		o.move(+1)
-	// 	}
-	// 	if ek.KeyStr == "enter" {
-	// 		o.success = true
-	// 		o.exit()
-	// 	}
-	// })
-	down := func(e ui.Event) {
-		o.move(1)
-	}
-	up := func(e ui.Event) {
-		o.move(-1)
-	}
-	quit := func(e ui.Event) {
-		o.success = true
-		o.exit()
-	}
-	ui.Handle("/sys/kbd/j", down)
-	ui.Handle("/sys/kbd/<down>", down)
-	ui.Handle("/sys/kbd/<up>", up)
-	ui.Handle("/sys/kbd/k", up)
-	ui.Handle("/sys/kbd/q", quit)
-	ui.Handle("/sys/kbd/<enter>", quit)
-	ui.Loop()
+	o.ls.Items = o.rendered
+	ui.Body.Align()
+	ui.Render(ui.Body)
 }
